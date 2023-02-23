@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: "postgres"
+    container_name: postgres
+    restart: always
+    environment: 
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5433:5432"
+    networks:
+      - common_network
+  nest-js: 
+    container_name: nest-js
+    build: .
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - 3000:3000
+      - 8000:8000
+    environment: 
+      - DB_TYPE=${DB_TYPE}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASS=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_SYNC=false
+      - JWT_SECRET=${JWT_SECRET}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - APP_EXPIRES=${APP_EXPIRES}
+      - APP_PORT=${APP_PORT}
+    command: npm run start:dev
+    depends_on:
+      - postgres
+      - kafka
+      - zookeeper
+    networks:
+      - common_network
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - common_network
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    depends_on: 
+      - zookeeper
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: "true"
+    restart: always
+    networks:
+      - common_network
+
+networks:
+  common_network:
+    external: true
